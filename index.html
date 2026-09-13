@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar do Saldão - Produtos Próximos ao Vencimento</title>
+    <style>
+        :root {
+            --primary: #e63946;
+            --secondary: #1d3557;
+            --light: #f1faee;
+            --dark: #1d3557;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: var(--dark);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 { color: var(--primary); margin-bottom: 5px; }
+        .btn-buscar {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: 0.3s;
+        }
+        .btn-buscar:hover { transform: scale(1.05); background-color: #c92a36; }
+        .status {
+            text-align: center;
+            margin: 15px 0;
+            font-style: italic;
+            color: #666;
+        }
+        .lista-lojas {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .card-loja {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--secondary);
+            display: flex;
+            flex-direction: column;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .nome-loja { font-size: 18px; font-weight: bold; color: var(--secondary); }
+        .distancia {
+            background-color: var(--light);
+            color: var(--secondary);
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .promocao-destaque {
+            margin-top: 10px;
+            background-color: #ffe3e3;
+            border: 1px dashed var(--primary);
+            padding: 10px;
+            border-radius: 6px;
+            color: #a81c26;
+            font-weight: 500;
+        }
+        .info-adicional { font-size: 13px; color: #777; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📍 Radar do Saldão</h1>
+        <p>Encontre ofertas de vencimento próximo em um raio de até 100 km</p>
+        <button class="btn-buscar" onclick="buscarEOrdenarLojas()">Buscar Lojas Mais Próximas</button>
+        <div id="status" class="status">Clique no botão acima para permitir sua localização.</div>
+    </header>
+
+    <main class="lista-lojas" id="listaLojas">
+        <!-- As lojas ordenadas vão aparecer aqui via JavaScript -->
+    </main>
+
+    <script>
+        // Banco de dados simulado (Você pode atualizar essa lista adicionando novas lojas facilmente)
+        const bancoDeDadosLojas = [
+            {
+                nome: "Tudo No Precinho Pimentas",
+                lat: -23.4412, // Coordenadas aproximadas de Guarulhos
+                lon: -46.4023,
+                oferta: "🔥 Caixa de Leite Integral por R$ 2,10 (Vence em 5 dias)",
+                atualizacao: "Atualizado hoje às 08:30"
+            },
+            {
+                nome: "Saldão Fernandes - Centro",
+                lat: -23.4682,
+                lon: -46.5306,
+                oferta: "🔥 Iogurte Bandeja c/ 6 por R$ 1,99 (Vence em 2 dias)",
+                atualizacao: "Atualizado hoje às 09:15"
+            },
+            {
+                nome: "Redutor de Preços São Miguel",
+                lat: -23.4985, // Zona Leste de SP (Próximo a Guarulhos)
+                lon: -46.4382,
+                oferta: "🔥 Kit de Chocolates Importados com 70% OFF",
+                atualizacao: "Atualizado ontem"
+            },
+            {
+                nome: "Feira de Oportunidades Mogi",
+                lat: -23.5222, // Mais distante (~35km+ de Guarulhos)
+                lon: -46.1881,
+                oferta: "🔥 Biscoito Recheado pacote por R$ 0,80",
+                atualizacao: "Atualizado hoje às 07:00"
+            }
+        ];
+
+        // Função matemática para calcular distância entre duas coordenadas (Fórmula Haversine)
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Raio da Terra em KM
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Retorna a distância em KM
+        }
+
+        function buscarEOrdenarLojas() {
+            const statusTxt = document.getElementById('status');
+           
+            if (!navigator.geolocation) {
+                statusTxt.innerText = "Seu navegador não suporta geolocalização.";
+                return;
+            }
+
+            statusTxt.innerText = "Calculando distância das lojas...";
+
+            navigator.geolocation.getCurrentPosition((position) => {
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+
+                // 1. Calcula a distância para cada loja e adiciona ao objeto
+                let lojasProcessadas = bancoDeDadosLojas.map(loja => {
+                    const dist = calcularDistancia(userLat, userLon, loja.lat, loja.lon);
+                    return { ...loja, distanciaCalculada: dist };
+                });
+
+                // 2. Filtra lojas em um raio de até 100 KM
+                lojasProcessadas = lojasProcessadas.filter(loja => loja.distanciaCalculada <= 100);
+
+                // 3. Ordena da mais perto (menor KM) para a mais longe (maior KM)
+                lojasProcessadas.sort((a, b) => a.distanciaCalculada - b.distanciaCalculada);
+
+                // 4. Renderiza na tela
+                renderizarLojas(lojasProcessadas);
+                statusTxt.innerText = `Resultados ordenados por proximidade num raio de 100km!`;
+
+            }, () => {
+                statusTxt.innerText = "Erro ao obter localização. Ative o GPS/Localização no seu aparelho.";
+            });
+        }
+
+        function renderizarLojas(lojas) {
+            const container = document.getElementById('listaLojas');
+            container.innerHTML = ""; // Limpa a lista atual
+
+            if (lojas.length === 0) {
+                container.innerHTML = "<p style='text-align:center;'>Nenhuma loja encontrada num raio de 100km.</p>";
+                return;
+            }
+
+            lojas.forEach(loja => {
+                const card = document.createElement('div');
+                card.className = 'card-loja';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="nome-loja">${loja.nome}</div>
+                        <div class="distancia">A ${loja.distanciaCalculada.toFixed(1)} km</div>
+                    </div>
+                    <div class="promocao-destaque">${loja.oferta}</div>
+                    <div class="info-adicional">⏱️ ${loja.atualizacao}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
