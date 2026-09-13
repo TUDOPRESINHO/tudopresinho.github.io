@@ -10,6 +10,7 @@
             --secondary: #1d3557;
             --light: #f1faee;
             --dark: #1d3557;
+            --success: #25d366;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -63,7 +64,16 @@
             justify-content: space-between;
             align-items: flex-start;
         }
-        .nome-loja { font-size: 18px; font-weight: bold; color: var(--secondary); }
+        .nome-loja { 
+            font-size: 18px; 
+            font-weight: bold; 
+            color: var(--secondary); 
+            text-decoration: none;
+        }
+        .nome-loja:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
         .distancia {
             background-color: var(--light);
             color: var(--secondary);
@@ -76,12 +86,34 @@
             margin-top: 10px;
             background-color: #ffe3e3;
             border: 1px dashed var(--primary);
-            padding: 10px;
+            padding: 12px;
             border-radius: 6px;
             color: #a81c26;
             font-weight: 500;
         }
+        .btn-wpp {
+            display: inline-block;
+            margin-top: 10px;
+            background-color: var(--success);
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .btn-wpp:hover { background-color: #128c7e; }
         .info-adicional { font-size: 13px; color: #777; margin-top: 8px; }
+        .link-mapa {
+            color: var(--secondary);
+            font-size: 13px;
+            margin-top: 5px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .link-mapa:hover { text-decoration: underline; color: var(--primary); }
     </style>
 </head>
 <body>
@@ -98,89 +130,88 @@
     </main>
 
     <script>
-        // Banco de dados simulado (Você pode atualizar essa lista adicionando novas lojas facilmente)
+        // Banco de dados com LINKS REAIS para mapas e WhatsApp fictício (coloque o número do lojista depois)
         const bancoDeDadosLojas = [
             {
                 nome: "Tudo No Precinho Pimentas",
-                lat: -23.4412, // Coordenadas aproximadas de Guarulhos
+                lat: -23.4412, 
                 lon: -46.4023,
+                mapaUrl: "https://google.com",
                 oferta: "🔥 Caixa de Leite Integral por R$ 2,10 (Vence em 5 dias)",
+                whatsappUrl: "https://wa.me?",
                 atualizacao: "Atualizado hoje às 08:30"
             },
             {
                 nome: "Saldão Fernandes - Centro",
-                lat: -23.4682,
+                lat: -23.4682, 
                 lon: -46.5306,
+                mapaUrl: "https://google.com",
                 oferta: "🔥 Iogurte Bandeja c/ 6 por R$ 1,99 (Vence em 2 dias)",
+                whatsappUrl: "https://wa.me.",
                 atualizacao: "Atualizado hoje às 09:15"
             },
             {
                 nome: "Redutor de Preços São Miguel",
-                lat: -23.4985, // Zona Leste de SP (Próximo a Guarulhos)
+                lat: -23.4985, 
                 lon: -46.4382,
+                mapaUrl: "https://google.com",
                 oferta: "🔥 Kit de Chocolates Importados com 70% OFF",
+                whatsappUrl: "https://wa.me",
                 atualizacao: "Atualizado ontem"
             },
             {
                 nome: "Feira de Oportunidades Mogi",
-                lat: -23.5222, // Mais distante (~35km+ de Guarulhos)
+                lat: -23.5222, 
                 lon: -46.1881,
+                mapaUrl: "https://google.com",
                 oferta: "🔥 Biscoito Recheado pacote por R$ 0,80",
+                whatsappUrl: "https://wa.me?",
                 atualizacao: "Atualizado hoje às 07:00"
             }
         ];
 
-        // Função matemática para calcular distância entre duas coordenadas (Fórmula Haversine)
         function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Raio da Terra em KM
+            const R = 6371; 
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a =
+            const a = 
                 Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
                 Math.sin(dLon/2) * Math.sin(dLon/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c; // Retorna a distância em KM
+            return R * c; 
         }
 
         function buscarEOrdenarLojas() {
             const statusTxt = document.getElementById('status');
-           
             if (!navigator.geolocation) {
                 statusTxt.innerText = "Seu navegador não suporta geolocalização.";
                 return;
             }
-
             statusTxt.innerText = "Calculando distância das lojas...";
 
             navigator.geolocation.getCurrentPosition((position) => {
                 const userLat = position.coords.latitude;
                 const userLon = position.coords.longitude;
 
-                // 1. Calcula a distância para cada loja e adiciona ao objeto
                 let lojasProcessadas = bancoDeDadosLojas.map(loja => {
                     const dist = calcularDistancia(userLat, userLon, loja.lat, loja.lon);
                     return { ...loja, distanciaCalculada: dist };
                 });
 
-                // 2. Filtra lojas em um raio de até 100 KM
                 lojasProcessadas = lojasProcessadas.filter(loja => loja.distanciaCalculada <= 100);
-
-                // 3. Ordena da mais perto (menor KM) para a mais longe (maior KM)
                 lojasProcessadas.sort((a, b) => a.distanciaCalculada - b.distanciaCalculada);
 
-                // 4. Renderiza na tela
                 renderizarLojas(lojasProcessadas);
                 statusTxt.innerText = `Resultados ordenados por proximidade num raio de 100km!`;
-
             }, () => {
-                statusTxt.innerText = "Erro ao obter localização. Ative o GPS/Localização no seu aparelho.";
+                statusTxt.innerText = "Erro ao obter localização. Ative o GPS/Localização.";
             });
         }
 
         function renderizarLojas(lojas) {
             const container = document.getElementById('listaLojas');
-            container.innerHTML = ""; // Limpa a lista atual
+            container.innerHTML = ""; 
 
             if (lojas.length === 0) {
                 container.innerHTML = "<p style='text-align:center;'>Nenhuma loja encontrada num raio de 100km.</p>";
@@ -192,10 +223,12 @@
                 card.className = 'card-loja';
                 card.innerHTML = `
                     <div class="card-header">
-                        <div class="nome-loja">${loja.nome}</div>
+                        <a href="${loja.mapaUrl}" target="_blank" class="nome-loja" title="Clique para abrir a rota no GPS">🏪 ${loja.nome}</a>
                         <div class="distancia">A ${loja.distanciaCalculada.toFixed(1)} km</div>
                     </div>
+                    <a href="${loja.mapaUrl}" target="_blank" class="link-mapa">🗺️ Ver endereço no Google Maps</a>
                     <div class="promocao-destaque">${loja.oferta}</div>
+                    <a href="${loja.whatsappUrl}" target="_blank" class="btn-wpp">💬 Reservar Oferta no WhatsApp</a>
                     <div class="info-adicional">⏱️ ${loja.atualizacao}</div>
                 `;
                 container.appendChild(card);
